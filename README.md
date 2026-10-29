@@ -23,7 +23,10 @@ grblHAL, Smoothie, TinyG, …).
 - **Corner buttons:**
   - bottom-left (plain home) → run the homing cycle (home all axes)
   - top-left `⌂X`, top-right `⌂Y`, bottom-right `⌂Z` → return that axis to its work zero
-- **Feed rate** field at the bottom (UGS jog feed rate, mm/min).
+- **Separate XY and Z feed rates** (mm/min) at the bottom. The XY feed is UGS's native jog feed
+  rate (shared with the rest of UGS); UGS has no Z-specific jog feed, so the Z feed is a
+  plugin-local value — persisted across restarts and applied to Z jogs by scaling UGS's jog
+  feed.
 - Docks on startup next to the standard Jog Controller (both remain available).
 
 ## Compatibility
@@ -54,7 +57,8 @@ single `.nbm` installs across versions — no need for a per-version build.
 4. **Stop:** click the centre hub to cancel a jog.
 5. **Home / zero:** bottom-left corner homes all axes; the `X`/`Y`/`Z` corners return that axis
    to work zero.
-6. **Feed rate:** set the jog feed (mm/min) in the field at the bottom.
+6. **Feed rates:** set the XY jog feed and the Z jog feed (mm/min) in the two fields at the
+   bottom. The Z feed is remembered between sessions.
 
 All distances are sent in millimetres (physically correct even if your UGS units are inches).
 
