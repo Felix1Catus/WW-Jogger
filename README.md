@@ -26,6 +26,12 @@ grblHAL, Smoothie, TinyG, …).
 - **Feed rate** field at the bottom (UGS jog feed rate, mm/min).
 - Docks on startup next to the standard Jog Controller (both remain available).
 
+## Compatibility
+
+Works with **UGS Platform 2.0.0 and any later `2.0.0.*` build** (including the
+`2.0.0.2026.9.10.18.13` stable release). The module only requires UGS Lib `>= 2.0.0`, so a
+single `.nbm` installs across versions — no need for a per-version build.
+
 ## Install (prebuilt plugin)
 
 1. Download [`dist/WW-Jogger.nbm`](dist/WW-Jogger.nbm) from this repo.
