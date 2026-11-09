@@ -19,21 +19,18 @@
 package com.willwinder.ugs.nbp.radialjog;
 
 /**
- * The eight jog directions on the radial pad. The angle from the centre of the
- * pad selects one of these; {@code dx}/{@code dy} are the signs applied to the
- * selected ring distance. Screen "up" is Y+.
+ * The four cardinal jog directions on the radial pad. The angle from the centre
+ * of the pad selects one of these; {@code dx}/{@code dy} are the signs applied
+ * to the selected ring distance. Screen "up" is Y+. Diagonal moves are not
+ * supported: any drag resolves to the nearest cardinal axis.
  *
  * @author Claude
  */
 public enum RadialJogDirection {
     E(1, 0, 0),
-    NE(1, 1, 45),
     N(0, 1, 90),
-    NW(-1, 1, 135),
     W(-1, 0, 180),
-    SW(-1, -1, 225),
-    S(0, -1, 270),
-    SE(1, -1, 315);
+    S(0, -1, 270);
 
     private final int dx;
     private final int dy;
@@ -63,12 +60,15 @@ public enum RadialJogDirection {
      */
     public static RadialJogDirection fromAngle(double degrees) {
         double normalized = ((degrees % 360) + 360) % 360;
-        int sector = (int) Math.round(normalized / 45.0) % 8;
-        for (RadialJogDirection d : values()) {
-            if (d.centerDegrees / 45 == sector) {
-                return d;
-            }
+        switch ((int) Math.round(normalized / 90.0) % 4) {
+            case 1:
+                return N;
+            case 2:
+                return W;
+            case 3:
+                return S;
+            default:
+                return E;
         }
-        return E;
     }
 }

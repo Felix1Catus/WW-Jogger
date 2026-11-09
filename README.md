@@ -11,18 +11,19 @@ grblHAL, Smoothie, TinyG, …).
 
 ## Features
 
-- **Ring = step size:** `0.1 / 1 / 10 / 50 / 100` mm, inner ring to outer ring.
-- **Angle = direction:** 8 directions — X±, Y± and the four diagonals (a diagonal jogs X and Y
-  together by the ring distance).
+- **Ring = step size:** `0.1 / 1 / 10 / 100` mm, inner ring to outer ring.
+- **Angle = direction:** the four cardinal axes — X± and Y±. A drag toward a corner snaps to the
+  nearest axis (no diagonal moves).
 - **Drag to jog:** press near the centre, drag out to the ring/direction you want, release to
   send a single jog. A plain click on a cell works too. A live readout in the hub shows what
-  the next move will be (e.g. `X+Y+ 10`).
+  the next move will be (e.g. `X+ 10`).
 - **Centre hub = stop:** cancels an in-progress jog.
-- **Z axis strip** on the right: same step distances, small near the centre, larger towards the
-  ends. Upper cells jog `Z+`, lower cells jog `Z-`.
-- **Corner buttons:**
+- **Z axis strip** on the right: steps `0.1 / 1 / 10` mm, small near the centre, larger towards
+  the ends. Upper cells jog `Z+`, lower cells jog `Z-`.
+- **Corner buttons = homing:**
   - bottom-left (plain home) → run the homing cycle (home all axes)
-  - top-left `⌂X`, top-right `⌂Y`, bottom-right `⌂Z` → return that axis to its work zero
+  - top-left `X`, top-right `Y`, bottom-right `Z` → home that single axis (sends `$HX` / `$HY` /
+    `$HZ`; needs single-axis homing enabled in firmware, standard on FluidNC and most GRBL builds)
 - **Separate XY and Z feed rates** (mm/min) at the bottom. The XY feed is UGS's native jog feed
   rate (shared with the rest of UGS); UGS has no Z-specific jog feed, so the Z feed is a
   plugin-local value — persisted across restarts and applied to Z jogs by scaling UGS's jog
@@ -55,8 +56,8 @@ single `.nbm` installs across versions — no need for a per-version build.
 3. **Jog Z:** click a cell on the right-hand strip — top half is `Z+`, bottom half is `Z-`,
    distance grows towards the ends.
 4. **Stop:** click the centre hub to cancel a jog.
-5. **Home / zero:** bottom-left corner homes all axes; the `X`/`Y`/`Z` corners return that axis
-   to work zero.
+5. **Homing:** bottom-left corner homes all axes; the `X`/`Y`/`Z` corners home that single axis
+   (needs single-axis homing support in your firmware).
 6. **Feed rates:** set the XY jog feed and the Z jog feed (mm/min) in the two fields at the
    bottom. The Z feed is remembered between sessions.
 
@@ -64,19 +65,21 @@ All distances are sent in millimetres (physically correct even if your UGS units
 
 ## Build from source
 
-This is a NetBeans module for the UGS Platform and builds as part of the UGS source tree.
+This is a NetBeans module for the UGS Platform. It builds standalone against the UGS `2.0-SNAPSHOT`
+artifacts in your local Maven repository (`~/.m2`).
 
-1. Clone [UGS](https://github.com/winder/Universal-G-Code-Sender).
-2. Drop this module in at `ugs-platform/ugs-platform-plugin-radialjog/` and add it to the
-   `<modules>` list in `ugs-platform/pom.xml` (and, optionally, as a dependency in
-   `ugs-platform/application/pom.xml` to bundle it into a full build).
-3. Build the module (JDK 17+):
+1. Build [UGS](https://github.com/winder/Universal-G-Code-Sender) once so its `2.0-SNAPSHOT`
+   artifacts are installed in `~/.m2`. UGS 2.0 is built with **JDK 25**, so use JDK 25 here too.
+2. From this repo's root, build the module:
 
    ```bash
-   ./mvnw install -pl ugs-platform/ugs-platform-plugin-radialjog -am -DskipTests
+   mvn package -Drevision=2.0 -Dchangelist=-SNAPSHOT -Dugs.modules.specification.version=2.0.0
    ```
 
-4. The `.nbm` lands in `ugs-platform/ugs-platform-plugin-radialjog/target/`.
+3. The `.nbm` lands in `target/nbm/`.
+
+The `-Dugs.modules.specification.version=2.0.0` flag floors the UGS Lib dependency at `>= 2.0.0`
+so one `.nbm` installs across any `2.0.0.*` build.
 
 ## License
 

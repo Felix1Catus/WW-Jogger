@@ -47,9 +47,9 @@ public interface RadialJogListener {
     void onHomeAll();
 
     /**
-     * Return a single axis to its work zero.
+     * Run a homing sequence on a single axis.
      *
      * @param axis one of 'X', 'Y' or 'Z'
      */
-    void onReturnToZero(char axis);
+    void onHomeAxis(char axis);
 }

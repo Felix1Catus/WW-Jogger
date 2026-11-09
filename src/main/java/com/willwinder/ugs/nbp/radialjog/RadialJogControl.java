@@ -47,9 +47,14 @@ import java.awt.geom.Point2D;
 public class RadialJogControl extends JComponent {
 
     /**
-     * Ring step distances in millimetres, inner ring first.
+     * Ring step distances for X/Y in millimetres, inner ring first.
      */
-    static final double[] DISTANCES = {0.1, 1, 10, 50, 100};
+    static final double[] XY_DISTANCES = {0.1, 1, 10, 100};
+
+    /**
+     * Step distances for the Z strip in millimetres, smallest first.
+     */
+    static final double[] Z_DISTANCES = {0.1, 1, 10};
 
     private static final int MARGIN = 12;
     private static final int Z_STRIP_WIDTH = 56;
@@ -133,22 +138,23 @@ public class RadialJogControl extends JComponent {
         int areaW = w - Z_STRIP_WIDTH - Z_STRIP_GAP - MARGIN * 2;
         int areaH = h - MARGIN * 2;
         // Reserve a small outer band for the direction arrows and labels.
-        int rimMargin = 12;
-        radius = Math.max(44, Math.min(areaW, areaH) / 2 - rimMargin);
+        // Larger rim keeps the disc clear of the corner homing buttons.
+        int rimMargin = 24;
+        radius = Math.max(40, Math.min(areaW, areaH) / 2 - rimMargin);
         cx = MARGIN + rimMargin + radius;
         if (cx + radius + rimMargin > w - Z_STRIP_WIDTH - Z_STRIP_GAP) {
-            radius = Math.max(44, (w - Z_STRIP_WIDTH - Z_STRIP_GAP - MARGIN * 2) / 2 - rimMargin);
+            radius = Math.max(40, (w - Z_STRIP_WIDTH - Z_STRIP_GAP - MARGIN * 2) / 2 - rimMargin);
             cx = MARGIN + rimMargin + radius;
         }
         cy = MARGIN + areaH / 2;
         hubR = (int) Math.max(16, radius * 0.17);
-        ringStep = (radius - hubR) / (double) DISTANCES.length;
-        cornerSize = (int) Math.max(30, Math.min(radius * 0.52, 62));
+        ringStep = (radius - hubR) / (double) XY_DISTANCES.length;
+        cornerSize = (int) Math.max(32, Math.min(radius * 0.56, 64));
 
         zx = w - Z_STRIP_WIDTH - MARGIN;
         zTop = MARGIN;
         zBottom = h - MARGIN;
-        zCellH = ((zBottom - zTop) - Z_CENTER_GAP) / (double) (DISTANCES.length * 2);
+        zCellH = ((zBottom - zTop) - Z_CENTER_GAP) / (double) (Z_DISTANCES.length * 2);
     }
 
     // Corner bounds: 0=TL(X) 1=TR(Y) 2=BL(home) 3=BR(Z).
@@ -190,12 +196,12 @@ public class RadialJogControl extends JComponent {
             }
             if (p.y < centerY) {
                 int idx = (int) ((centerY - Z_CENTER_GAP / 2.0 - p.y) / zCellH);
-                idx = clamp(idx, 0, DISTANCES.length - 1);
-                return new Target(Kind.Z, null, 1, DISTANCES[idx], (char) 0);
+                idx = clamp(idx, 0, Z_DISTANCES.length - 1);
+                return new Target(Kind.Z, null, 1, Z_DISTANCES[idx], (char) 0);
             } else {
                 int idx = (int) ((p.y - centerY - Z_CENTER_GAP / 2.0) / zCellH);
-                idx = clamp(idx, 0, DISTANCES.length - 1);
-                return new Target(Kind.Z, null, -1, DISTANCES[idx], (char) 0);
+                idx = clamp(idx, 0, Z_DISTANCES.length - 1);
+                return new Target(Kind.Z, null, -1, Z_DISTANCES[idx], (char) 0);
             }
         }
 
@@ -207,9 +213,9 @@ public class RadialJogControl extends JComponent {
         if (dist > radius) {
             return Target.NONE;
         }
-        int band = clamp((int) ((dist - hubR) / ringStep), 0, DISTANCES.length - 1);
+        int band = clamp((int) ((dist - hubR) / ringStep), 0, XY_DISTANCES.length - 1);
         double angle = Math.toDegrees(Math.atan2(-ddy0, ddx0));
-        return new Target(Kind.XY, RadialJogDirection.fromAngle(angle), 0, DISTANCES[band], (char) 0);
+        return new Target(Kind.XY, RadialJogDirection.fromAngle(angle), 0, XY_DISTANCES[band], (char) 0);
     }
 
     private static int clamp(int v, int lo, int hi) {
@@ -224,9 +230,9 @@ public class RadialJogControl extends JComponent {
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
         boolean on = isEnabled();
-        paintCorners(g2, on);
         paintBullseye(g2, on);
         paintZStrip(g2, on);
+        paintCorners(g2, on);
         g2.dispose();
     }
 
@@ -245,7 +251,7 @@ public class RadialJogControl extends JComponent {
         fillCircle(g2, cx, cy, radius);
 
         // Embossed ring grooves.
-        for (int i = 1; i < DISTANCES.length; i++) {
+        for (int i = 1; i < XY_DISTANCES.length; i++) {
             double r = hubR + i * ringStep;
             g2.setStroke(new BasicStroke(1f));
             g2.setColor(on ? GROOVE : DISABLED.darker());
@@ -294,11 +300,11 @@ public class RadialJogControl extends JComponent {
         // spoke and the upper-left red diagonal) so they miss the arrows.
         g2.setFont(getFont().deriveFont(Font.PLAIN, 11f));
         double chipAngle = Math.toRadians(112.5);
-        for (int i = 0; i < DISTANCES.length; i++) {
+        for (int i = 0; i < XY_DISTANCES.length; i++) {
             double rm = hubR + (i + 0.5) * ringStep;
             int chipX = (int) (cx + rm * Math.cos(chipAngle));
             int chipY = (int) (cy - rm * Math.sin(chipAngle));
-            drawChip(g2, chipX, chipY, formatDistance(DISTANCES[i]), on);
+            drawChip(g2, chipX, chipY, formatDistance(XY_DISTANCES[i]), on);
         }
 
         // Cyan chevron arrows on the outer ring.
@@ -407,14 +413,14 @@ public class RadialJogControl extends JComponent {
         g2.setFont(getFont().deriveFont(Font.BOLD, 11f));
         g2.setColor(on ? new Color(0x2F5A14) : DISABLED.darker());
         drawCenteredString(g2, "Z+", zx + Z_STRIP_WIDTH / 2, zTop + 2);
-        for (int i = 0; i < DISTANCES.length; i++) {
-            double dist = DISTANCES[DISTANCES.length - 1 - i];
-            int yTop = (int) (centerY - Z_CENTER_GAP / 2.0 - (DISTANCES.length - i) * zCellH);
+        for (int i = 0; i < Z_DISTANCES.length; i++) {
+            double dist = Z_DISTANCES[Z_DISTANCES.length - 1 - i];
+            int yTop = (int) (centerY - Z_CENTER_GAP / 2.0 - (Z_DISTANCES.length - i) * zCellH);
             boolean hot = on && target.kind == Kind.Z && target.zSign == 1 && target.distance == dist;
             paintZCell(g2, yTop, dist, on ? Z_PLUS : DISABLED, hot, new Color(0x2F5A14));
         }
-        for (int i = 0; i < DISTANCES.length; i++) {
-            double dist = DISTANCES[i];
+        for (int i = 0; i < Z_DISTANCES.length; i++) {
+            double dist = Z_DISTANCES[i];
             int yTop = (int) (centerY + Z_CENTER_GAP / 2.0 + i * zCellH);
             boolean hot = on && target.kind == Kind.Z && target.zSign == -1 && target.distance == dist;
             paintZCell(g2, yTop, dist, on ? Z_MINUS : DISABLED, hot, new Color(0x7A2F14));
@@ -488,8 +494,8 @@ public class RadialJogControl extends JComponent {
     }
 
     private int distanceToBand(double dist) {
-        for (int i = 0; i < DISTANCES.length; i++) {
-            if (DISTANCES[i] == dist) {
+        for (int i = 0; i < XY_DISTANCES.length; i++) {
+            if (XY_DISTANCES[i] == dist) {
                 return i;
             }
         }
@@ -497,8 +503,8 @@ public class RadialJogControl extends JComponent {
     }
 
     private Path2D buildWedge(int centerDegrees, double rIn, double rOut) {
-        double a0 = Math.toRadians(centerDegrees - 22.5);
-        double a1 = Math.toRadians(centerDegrees + 22.5);
+        double a0 = Math.toRadians(centerDegrees - 45);
+        double a1 = Math.toRadians(centerDegrees + 45);
         int steps = 10;
         Path2D path = new Path2D.Double();
         for (int i = 0; i <= steps; i++) {
@@ -619,7 +625,7 @@ public class RadialJogControl extends JComponent {
                 if (t.homeAxis == 0) {
                     listener.onHomeAll();
                 } else {
-                    listener.onReturnToZero(t.homeAxis);
+                    listener.onHomeAxis(t.homeAxis);
                 }
                 break;
             default:

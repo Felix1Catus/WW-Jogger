@@ -21,7 +21,6 @@ package com.willwinder.ugs.nbp.radialjog;
 import com.willwinder.ugs.nbp.lib.Mode;
 import com.willwinder.ugs.nbp.lib.services.LocalizingService;
 import com.willwinder.universalgcodesender.listeners.UGSEventListener;
-import com.willwinder.universalgcodesender.model.Axis;
 import com.willwinder.universalgcodesender.model.BackendAPI;
 import com.willwinder.universalgcodesender.model.PartialPosition;
 import com.willwinder.universalgcodesender.model.UGSEvent;
@@ -33,6 +32,7 @@ import com.willwinder.universalgcodesender.services.LookupService;
 import net.miginfocom.swing.MigLayout;
 import org.openide.awt.ActionID;
 import org.openide.awt.ActionReference;
+import org.openide.util.NbPreferences;
 import org.openide.windows.TopComponent;
 
 import javax.swing.JLabel;
@@ -40,6 +40,7 @@ import javax.swing.JPanel;
 import javax.swing.JSpinner;
 import javax.swing.SpinnerNumberModel;
 import java.awt.BorderLayout;
+import java.util.prefs.Preferences;
 
 /**
  * A FluidNC-style radial jog panel for the UGS platform. Reuses the standard
@@ -70,10 +71,16 @@ public final class RadialJogTopComponent extends TopComponent implements UGSEven
     public static final String CATEGORY = LocalizingService.CATEGORY_WINDOW;
     public static final String ACTION_ID = "com.willwinder.ugs.nbp.radialjog.RadialJogTopComponent";
 
+    private static final String Z_FEED_KEY = "zFeedRate";
+    private static final double DEFAULT_FEED = 1000;
+
     private final transient BackendAPI backend;
     private final transient JogService jogService;
+    private final transient Preferences prefs = NbPreferences.forModule(RadialJogTopComponent.class);
     private final RadialJogControl control;
     private final JSpinner feedRateSpinner;
+    private final JSpinner zFeedRateSpinner;
+    private double zFeedRate;
     private boolean updating = false;
 
     public RadialJogTopComponent() {
@@ -89,9 +96,23 @@ public final class RadialJogTopComponent extends TopComponent implements UGSEven
             }
         });
 
-        JPanel south = new JPanel(new MigLayout("insets 4 8 6 8, fillx", "[right][grow][]", "[]"));
-        south.add(new JLabel("Feed rate"));
+        // Z feed is plugin-local: UGS core has only one jog feed rate, so the
+        // panel keeps its own and persists it across restarts.
+        zFeedRate = prefs.getDouble(Z_FEED_KEY, DEFAULT_FEED);
+        zFeedRateSpinner = new JSpinner(new SpinnerNumberModel(zFeedRate, 1, 1_000_000, 100));
+        zFeedRateSpinner.addChangeListener(e -> {
+            if (!updating) {
+                zFeedRate = ((Number) zFeedRateSpinner.getValue()).doubleValue();
+                prefs.putDouble(Z_FEED_KEY, zFeedRate);
+            }
+        });
+
+        JPanel south = new JPanel(new MigLayout("insets 4 8 6 8, fillx", "[right][grow][]", "[]4[]"));
+        south.add(new JLabel("XY feed"));
         south.add(feedRateSpinner, "growx");
+        south.add(new JLabel("mm/min"), "wrap");
+        south.add(new JLabel("Z feed"));
+        south.add(zFeedRateSpinner, "growx");
         south.add(new JLabel("mm/min"));
 
         setLayout(new BorderLayout());
@@ -127,6 +148,7 @@ public final class RadialJogTopComponent extends TopComponent implements UGSEven
         boolean canJog = jogService.canJog();
         control.setEnabled(canJog);
         feedRateSpinner.setEnabled(canJog);
+        zFeedRateSpinner.setEnabled(canJog);
         control.repaint();
 
         updating = true;
@@ -146,7 +168,17 @@ public final class RadialJogTopComponent extends TopComponent implements UGSEven
         Double y = dy == 0 ? null : dy * distanceMm;
         Double z = dz == 0 ? null : dz * distanceMm;
         PartialPosition distance = new PartialPosition(x, y, z, UnitUtils.Units.MM);
-        jogService.adjustManualLocation(distance, 1.0);
+
+        // Pure-Z moves run at the plugin-local Z feed, applied by scaling UGS's
+        // jog feed via the speed factor. XY moves use UGS's native jog feed.
+        double speedFactor = 1.0;
+        if (dx == 0 && dy == 0 && dz != 0) {
+            double base = jogService.getFeedRate();
+            if (base > 0) {
+                speedFactor = zFeedRate / base;
+            }
+        }
+        jogService.adjustManualLocation(distance, speedFactor);
     }
 
     @Override
@@ -164,8 +196,13 @@ public final class RadialJogTopComponent extends TopComponent implements UGSEven
     }
 
     @Override
-    public void onReturnToZero(char axis) {
-        Axis target = axis == 'X' ? Axis.X : axis == 'Y' ? Axis.Y : Axis.Z;
-        backend.returnToZero(target);
+    public void onHomeAxis(char axis) {
+        // UGS core has no per-axis homing API, so send the firmware's
+        // single-axis home command ($HX / $HY / $HZ on GRBL / FluidNC).
+        try {
+            backend.sendGcodeCommand("$H" + axis);
+        } catch (Exception e) {
+            // Homing may be unavailable or the firmware may not support it.
+        }
     }
 }
