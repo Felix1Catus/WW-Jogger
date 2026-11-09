@@ -73,13 +73,15 @@ artifacts in your local Maven repository (`~/.m2`).
 2. From this repo's root, build the module:
 
    ```bash
-   mvn package -Drevision=2.0 -Dchangelist=-SNAPSHOT -Dugs.modules.specification.version=2.0.0
+   mvn package -Drevision=2.0 -Dchangelist=-SNAPSHOT -Dugs.modules.specification.version=2.0.1
    ```
 
 3. The `.nbm` lands in `target/nbm/`.
 
-The `-Dugs.modules.specification.version=2.0.0` flag floors the UGS Lib dependency at `>= 2.0.0`
-so one `.nbm` installs across any `2.0.0.*` build.
+`-Dugs.modules.specification.version` sets the module's **own** specification version. Bump it
+for each release (`2.0.1`, `2.0.2`, …) so UGS's plugin installer sees the new `.nbm` as an upgrade
+over the one already installed. The UGS Lib dependency floor (`>= 2.0.0`, which lets one `.nbm`
+install across any `2.0.0.*` build) is independent — it comes from the UGS Lib artifact itself.
 
 ## License
 
